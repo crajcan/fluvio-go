@@ -1,0 +1,65 @@
+- crate fluvio (abreviated)
+  - `fn consumer<S: Into<String>>(topic: S, partition: PartitionId) -> Result<PartitionConsumer>`
+  - `fn producer<S: Into<String>>(topic: S) -> Result<TopicProducer>`
+  -  struct Fluvio (abreviated)
+    - `fn admin(&self) -> FluvioAdmin`
+    - `fn connect() -> Result<Self>`
+    - `fn connect_with_config(config: &FluvioConfig) -> Result<Self>`
+    - `fn topic_producer<S: Into<String>>(&self, topic: S) -> Result<TopicProducer>`
+    - `fn topic_producer_with_config(&self, topic: S, config: TopicProducerConfig) -> Result<TopicProducer>`
+    - `fn consumer(&self, strategy: PartitionSelectionStrategy) -> Result<MultiplePartitionConsumer>`  
+    - `fn partition_consumer<S: Into<String>>(&self, topic: S, partition: PartitionId) -> Result<PartitionConsumer>`
+  -  struct FluvioAdmin
+     - `fn connect() -> Result<Self>` 
+     - `fn connect_with_config(config: &FluvioConfig) -> Result<Self>`
+     - `fn create<S>(&self,name: String, dry_run: bool, spec: S) -> Result<()>`
+     - `fn create_with_config<S>(&self, config: CommonCreateRequest, spec: S) -> Result<()>`
+     - `fn delete<S, K>(&self, key: K) -> Result<()>`
+     - `fn all<S>(&self) -> Result<Vec<Metadata<S>>>`
+     - `fn list<S, F>(&self, filters: Vec<F>) -> Result<Vec<Metadata<S>>>`
+     - `fn list_with_params<S, F>(&self, filters: Vec<F>, summary: bool) -> Result<Vec<Metadata<S>>>`
+     - `fn watch<S>(&self) -> Result<impl Stream<Item = Result<WatchResponse<S>, IoError>>>` 
+  -  struct TopicProducer
+     - `fn send<K, V>(&self, key: K, value: V) -> Result<ProduceOutput>`
+     - `fn send_all<K, V, I>(&self, records: I) -> Result<Vec<ProduceOutput>>`
+     - `fn flush(&self) -> Result<()>`
+     - `fn clear_errors(&self)`
+     - `fn metrics(&self)`
+  -  struct TopicProducerConfig 
+  -  struct TopicProducerConfigBuilder
+  -  `fn build(self) -> Result<TopicProducerConfig, TopicProducerConfigBuilderError>`
+  -  `fn batch_size(&self, value: usize) -> Self`
+  -  `fn batch_queue_size(&self, value: usize) -> Self`
+  -  `fn linger(&self, value: Duration) -> Self`
+  -  `fn partitioner(&self, value: Box<dyn Partitioner + Send + Sync>) -> Self`
+  -  `fn compression<V: Into<Compression>>(&self, value: V) -> Self`
+  -  `fn timeout(self, value: Duration) -> Self`
+  -  `fn isolation(self, value: Isolation) -> Self`
+  -  `fn delivery_semantic(self, value: DeliverySemantic) -> Self`
+  -  `fn smartmodules(self, value: Vec<SmartModuleInvocation>) -> Self`
+  - struct FluvioConfig
+    - `fn load() -> Result<Self, FluvioError>`
+    - `fn new<S: Into<String>>(addr: S) -> Self`
+    - `fn with_tls<T: Into<TlsPolicy>>(self, tls: T) -> Self`
+  - struct ConsumerConfig
+    - fn builder() -> ConsumerConfigBuilder
+  - struct PartitionConsumer
+    - `fn new(topic: String, partition: PartitionId, pool: Arc<P>, metrics: Arc<ClientMetrics>) -> Self`
+    - `fn topic(&self) -> &str`
+    - `fn partition(&self) -> PartitionId`
+    - `fn metrics(&self) -> Arc<ClientMetrics>`
+    - `fn stream(&self, offset: Offset) -> Result<impl Stream<Item = Result<Record, ErrorCode>>>`
+    - `fn stream_with_config(&self, offset: Offset, config: ConsumerConfig) -> Result<impl Stream<Item = Result<Record, ErrorCode>>>`
+    - `fn stream_batches_with_config(&self, offset: Offset, config: ConsumerConfig) -> Result<impl Stream<Item = Result<Batch, ErrorCode>>>`
+  - enum PartitionSelectionStrategy
+    - `All(String)` the `String` is the Topic
+    - `Multiple(Vec<(String, ParitionId)>)`
+  - struct MultiplePartitionConsumer
+    - `fn stream(&self, offset: Offset) -> Result<impl Stream<Item = Result<Record, ErrorCode>>>`
+    - `fn stream_with_config(&self, offset: Offset, config: ConsumerConfig) -> Result<impl Stream<Item = Result<Record, ErrorCode>>>`
+  - Module consumer
+    - struct ConsumerConfigBuilder
+    - `fn disable_continuous(&mut self, value: bool) -> &mut Self`
+    - `fn max_bytes(&mut self, value: i32) -> &mut Self`
+    - `fn isolation(&mut self, value: Isolation) -> &mut Self`
+    - `fn smartmodule(&mut self, value: Vec<SmartModuleInvocation>) -> &mut Self`
