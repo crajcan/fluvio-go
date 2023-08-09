@@ -12,8 +12,11 @@ name = "fluvio_go"
 
 [dependencies]
 libc = "0.2.98"
-fluvio = { version = "0.9.0" }
-fluvio-future = { version = "0.3.8", features = ["io"] }
+anyhow = "1.0.38"
+fluvio = { version = "0.20.0" }
+fluvio-future = { version = "0.5.1", features = ["io"] }
+flate2 = { version = "1.0.25" }
+fluvio-protocol = { version = "0.10.4" }
 
 [build-dependencies]
 cbindgen = "0.20.0"

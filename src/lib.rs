@@ -1,14 +1,25 @@
 extern crate libc;
 
+use std::collections::BTreeMap;
+use std::error::Error;
 use std::ffi::{CStr, CString};
+use std::io::Read;
+use std::path::{PathBuf, Path};
 use std::pin::Pin;
 use std::slice;
 
 use fluvio::consumer::Record;
-use fluvio::{ConsumerConfig, Fluvio, FluvioError, Offset, PartitionConsumer, TopicProducer};
+use fluvio::{
+    ConsumerConfig, Fluvio, FluvioError, Offset, PartitionConsumer, TopicProducer,
+    SmartModuleContextData, SmartModuleInvocation, SmartModuleKind, SmartModuleInvocationWasm, ProduceOutput
+};
 use fluvio_future::io::{Stream, StreamExt};
 use fluvio_future::task::run_block_on;
 use libc::{c_char, size_t};
+use fluvio_protocol::link::ErrorCode;
+
+use flate2::bufread::GzEncoder;
+use flate2::Compression;
 
 #[repr(C)]
 pub struct FluvioErrorWrapper {
@@ -187,29 +198,60 @@ pub extern "C" fn offset_free(offset_ptr: *mut OffsetWrapper) {
     }
 }
 
-type PartitionConsumerStreamInner = Pin<Box<dyn Stream<Item = Result<Record, FluvioError>> + Send>>;
+type PartitionConsumerStreamInner = Pin<Box<dyn Stream<Item = Result<Record, ErrorCode>> + Send>>;
 pub struct PartitionConsumerStream {
     pub inner: PartitionConsumerStreamInner,
 }
 
 impl PartitionConsumerStream {
-    fn next(&mut self) -> Option<Result<Record, FluvioError>> {
+    fn next(&mut self) -> Option<Result<Record, ErrorCode>> {
         run_block_on(self.inner.next())
     }
 }
 
 pub struct ConsumerConfigWrapper {
-    wasm_module: Vec<u8>,
+    wasm_module: SmartModuleInvocation,
 }
 
 impl ConsumerConfigWrapper {
-    fn new_config_with_wasm_filter(file: &str) -> Result<ConsumerConfigWrapper, std::io::Error> {
-        match std::fs::read(file) {
-            Ok(buffer) => Ok(ConsumerConfigWrapper {
-                wasm_module: buffer,
-            }),
-            Err(err) => Err(err),
-        }
+    fn smart_module_ctx() -> SmartModuleContextData {
+        // if let Some(agg_initial) = &self.aggregate_initial {
+        //     SmartModuleContextData::Aggregate {
+        //         accumulator: agg_initial.clone().into_bytes(),
+        //     }
+        // } else {
+        SmartModuleContextData::None
+        // }
+    }
+
+    /// create smartmodule from wasm file
+    pub(crate) fn create_smartmodule_from_path(
+        path: &str,
+        ctx: SmartModuleContextData,
+        params: std::collections::BTreeMap<String, String>,
+    ) -> Result<SmartModuleInvocation, FluvioError> {
+        let raw_buffer = std::fs::read(path)?;
+
+        let mut encoder = GzEncoder::new(raw_buffer.as_slice(), Compression::default());
+        let mut buffer = Vec::with_capacity(raw_buffer.len());
+        encoder.read_to_end(&mut buffer)?;
+
+        Ok(SmartModuleInvocation {
+            wasm: SmartModuleInvocationWasm::AdHoc(buffer),
+            kind: SmartModuleKind::Generic(ctx),
+            params: params.into(),
+        })
+    }
+
+    fn new_config_with_wasm_filter(file: &str) -> anyhow::Result<ConsumerConfigWrapper> {
+        // builder.wasm_filter(config_wrapper.wasm_module.clone());
+        let sm_invocation = Self::create_smartmodule_from_path(
+            file,
+            Self::smart_module_ctx(),
+            BTreeMap::new()
+        )?;
+
+        Ok(ConsumerConfigWrapper { wasm_module: sm_invocation })
     }
 }
 
@@ -222,7 +264,7 @@ impl PartitionConsumerWrapper {
         PartitionConsumerWrapper { inner }
     }
 
-    fn stream(&self, offset: &OffsetWrapper) -> Result<PartitionConsumerStream, FluvioError> {
+    fn stream(&self, offset: &OffsetWrapper) -> anyhow::Result<PartitionConsumerStream> {
         return self.stream_with_config(offset, None);
     }
 
@@ -230,11 +272,13 @@ impl PartitionConsumerWrapper {
         &self,
         offset: &OffsetWrapper,
         config_wrapper: Option<&ConsumerConfigWrapper>,
-    ) -> Result<PartitionConsumerStream, FluvioError> {
+    ) -> anyhow::Result<PartitionConsumerStream> {
         match config_wrapper {
             Some(config_wrapper) => {
                 let mut builder = ConsumerConfig::builder();
-                builder.wasm_filter(config_wrapper.wasm_module.clone());
+
+                builder.smartmodule(vec![config_wrapper.wasm_module.clone()]);
+
                 let config = builder.build().unwrap();
                 match run_block_on(self.inner.stream_with_config(offset.inner.clone(), config)) {
                     Ok(stream) => Ok(PartitionConsumerStream {
@@ -262,7 +306,7 @@ impl TopicProducerWrapper {
         TopicProducerWrapper { inner }
     }
 
-    fn send<K, V>(&self, key: K, value: V) -> Result<(), FluvioError>
+    fn send<K, V>(&self, key: K, value: V) -> anyhow::Result<ProduceOutput>
     where
         K: Into<Vec<u8>>,
         V: Into<Vec<u8>>,
@@ -279,17 +323,17 @@ impl FluvioWrapper {
     fn new(inner: Fluvio) -> Self {
         FluvioWrapper { inner }
     }
-    fn connect() -> Result<Fluvio, FluvioError> {
+    fn connect() -> anyhow::Result<Fluvio> {
         run_block_on(Fluvio::connect())
     }
-    fn topic_producer<S: Into<String>>(&mut self, topic: S) -> Result<TopicProducer, FluvioError> {
+    fn topic_producer<S: Into<String>>(&mut self, topic: S) -> anyhow::Result<TopicProducer> {
         run_block_on(self.inner.topic_producer(topic))
     }
     fn partition_consumer<S: Into<String>>(
         &mut self,
         topic: S,
-        partition: i32,
-    ) -> Result<PartitionConsumer, FluvioError> {
+        partition: u32,
+    ) -> anyhow::Result<PartitionConsumer> {
         run_block_on(self.inner.partition_consumer(topic, partition))
     }
 }
@@ -430,7 +474,7 @@ pub extern "C" fn fluvio_partition_consumer(
         assert!(!topic_ptr.is_null());
         CStr::from_ptr(topic_ptr).to_str().unwrap()
     };
-    match f.partition_consumer(topic, partition) {
+    match f.partition_consumer(topic, partition as u32) {
         Ok(partition_consumer) => {
             Box::into_raw(Box::new(PartitionConsumerWrapper::new(partition_consumer)))
         }
