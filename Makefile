@@ -5,8 +5,14 @@ gen:
 build: gen
 	go build -o fluvio-go example/main.go
 
+build-sm: gen
+	go build -o fluvio-go-sm example/smart_stream.go
+
 run: build
 	./fluvio-go
+
+run-sm: build
+	./fluvio-go-sm
 
 go:
 	go build -o fluvio-go example/main.go

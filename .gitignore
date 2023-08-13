@@ -28,4 +28,5 @@
 # the working binary
 /main
 /fluvio-go
+/fluvio-go-sm
 src/libfluvio_go.d
