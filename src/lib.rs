@@ -1,10 +1,8 @@
 extern crate libc;
 
 use std::collections::BTreeMap;
-use std::error::Error;
 use std::ffi::{CStr, CString};
 use std::io::Read;
-use std::path::{PathBuf, Path};
 use std::pin::Pin;
 use std::slice;
 
@@ -38,7 +36,7 @@ impl Drop for FluvioErrorWrapper {
     fn drop(&mut self) {
         if !self.msg.is_null() {
             unsafe {
-                CString::from_raw(self.msg);
+                drop(CString::from_raw(self.msg));
             }
         }
     }
@@ -53,7 +51,7 @@ pub extern "C" fn fluvio_error_new() -> *mut FluvioErrorWrapper {
 pub extern "C" fn fluvio_error_free(err_ptr: *mut FluvioErrorWrapper) {
     if !err_ptr.is_null() {
         unsafe {
-            Box::from_raw(err_ptr);
+            drop(Box::from_raw(err_ptr));
         }
     }
 }
@@ -90,15 +88,15 @@ impl Drop for RecordWrapper {
     fn drop(&mut self) {
         if !self.key.is_null() {
             unsafe {
-                Box::from_raw(slice::from_raw_parts_mut(self.key as *mut u8, self.key_len));
+                drop(Box::from_raw(slice::from_raw_parts_mut(self.key as *mut u8, self.key_len)));
             }
         }
         if !self.value.is_null() {
             unsafe {
-                Box::from_raw(slice::from_raw_parts_mut(
+                drop(Box::from_raw(slice::from_raw_parts_mut(
                     self.value as *mut u8,
                     self.value_len,
-                ));
+                )));
             }
         }
     }
@@ -108,7 +106,7 @@ impl Drop for RecordWrapper {
 pub extern "C" fn record_free(record_ptr: *mut RecordWrapper) {
     if record_ptr.is_null() {
         unsafe {
-            Box::from_raw(record_ptr);
+            drop(Box::from_raw(record_ptr));
         }
     }
 }
@@ -193,7 +191,7 @@ pub extern "C" fn offset_absolute(
 pub extern "C" fn offset_free(offset_ptr: *mut OffsetWrapper) {
     if !offset_ptr.is_null() {
         unsafe {
-            Box::from_raw(offset_ptr);
+            drop(Box::from_raw(offset_ptr));
         }
     }
 }
@@ -357,7 +355,7 @@ pub extern "C" fn fluvio_connect(err_ptr: *mut FluvioErrorWrapper) -> *mut Fluvi
 pub extern "C" fn fluvio_free(fluvio_ptr: *mut FluvioWrapper) {
     if !fluvio_ptr.is_null() {
         unsafe {
-            Box::from_raw(fluvio_ptr);
+            drop(Box::from_raw(fluvio_ptr));
         }
     }
 }
@@ -423,7 +421,7 @@ pub extern "C" fn topic_producer_send(
 pub extern "C" fn topic_producer_free(topic_producer_ptr: *mut TopicProducerWrapper) {
     if !topic_producer_ptr.is_null() {
         unsafe {
-            Box::from_raw(topic_producer_ptr);
+            drop(Box::from_raw(topic_producer_ptr));
         }
     }
 }
@@ -454,7 +452,7 @@ pub extern "C" fn consumer_config_with_wasm_filter(
 pub extern "C" fn consumer_config_free(consumer_config_ptr: *mut ConsumerConfigWrapper) {
     if !consumer_config_ptr.is_null() {
         unsafe {
-            Box::from_raw(consumer_config_ptr);
+            drop(Box::from_raw(consumer_config_ptr));
         }
     }
 }
@@ -493,7 +491,7 @@ pub extern "C" fn fluvio_partition_consumer(
 pub extern "C" fn partition_consumer_free(partition_consumer_ptr: *mut PartitionConsumerWrapper) {
     if !partition_consumer_ptr.is_null() {
         unsafe {
-            Box::from_raw(partition_consumer_ptr);
+            drop(Box::from_raw(partition_consumer_ptr));
         }
     }
 }
@@ -588,7 +586,7 @@ pub extern "C" fn partition_consumer_stream_next(
 pub extern "C" fn partition_consumer_stream_free(stream_ptr: *mut PartitionConsumerStream) {
     if !stream_ptr.is_null() {
         unsafe {
-            Box::from_raw(stream_ptr);
+            drop(Box::from_raw(stream_ptr));
         }
     }
 }
