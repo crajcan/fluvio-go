@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 
-	"github.com/avinassh/fluvio-go/fluvio"
+	"github.com/avinassh/fluvio-go/fluvio/fluvio_client"
+	"github.com/avinassh/fluvio-go/fluvio/offset"
+	"github.com/avinassh/fluvio-go/fluvio/consumer/consumer_config"
 )
 
 func main() {
-	fluvioClient, err := fluvio.Connect()
+	fluvioClient, err := fluvio_client.Connect()
 	if err != nil {
 		fmt.Println("error while connecting", err)
 		return
@@ -19,7 +21,7 @@ func main() {
 	// this filter lets any record of string which contains character `a`
 	wasmFile := "example/filter.wasm"
 
-	config, err := fluvioClient.ConsumerConfigWithWasmFilter(wasmFile)
+	config, err := consumer_config.ConsumerConfigWithWasmFilter(wasmFile)
 	if err != nil {
 		fmt.Println("error while getting consumer config", err)
 		return
@@ -35,7 +37,7 @@ func main() {
 	defer partitionConsumer.Close()
 
 	// create a stream object
-	stream, err := partitionConsumer.StreamWithConfig(fluvio.NewOffsetFromBeginning(0), config)
+	stream, err := partitionConsumer.StreamWithConfig(offset.NewOffsetFromBeginning(0), config)
 	if err != nil {
 		fmt.Println("error while getting stream on partition consumer", err)
 		return

@@ -1,4 +1,4 @@
-package fluvio
+package consumer
 
 type Record struct {
 	Offset int64

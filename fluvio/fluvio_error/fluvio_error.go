@@ -1,4 +1,4 @@
-package fluvio
+package fluvio_error
 
 import (
 	"strings"

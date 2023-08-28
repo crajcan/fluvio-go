@@ -1,6 +1,6 @@
 gen:
-	cargo build --release
-	mv target/release/libfluvio_go.* src/
+	cargo build --target aarch64-apple-darwin --release
+	mv target/aarch64-apple-darwin/release/libfluvio_go.* src/
 
 build: gen
 	go build -o fluvio-go example/main.go
@@ -11,7 +11,7 @@ build-sm: gen
 run: build
 	./fluvio-go
 
-run-sm: build
+run-sm: build-sm
 	./fluvio-go-sm
 
 go:
