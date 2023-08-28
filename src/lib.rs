@@ -197,6 +197,7 @@ pub extern "C" fn offset_free(offset_ptr: *mut OffsetWrapper) {
 }
 
 type PartitionConsumerStreamInner = Pin<Box<dyn Stream<Item = Result<Record, ErrorCode>> + Send>>;
+
 pub struct PartitionConsumerStream {
     pub inner: PartitionConsumerStreamInner,
 }

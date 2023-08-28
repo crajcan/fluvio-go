@@ -1,4 +1,4 @@
-package offset
+package fluvio
 
 type Offset interface {
 	isOffset()

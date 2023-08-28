@@ -1,10 +1,10 @@
-package consumer_config
+package consumer
 
 import (
 	"unsafe"
 
+	"github.com/avinassh/fluvio-go/fluvio"
 	"github.com/avinassh/fluvio-go/fluvio/c_interface"
-	"github.com/avinassh/fluvio-go/fluvio/fluvio_error"
 )
 
 type ConsumerConfig struct {
@@ -20,11 +20,11 @@ func ConsumerConfigWithWasmFilter(wasmFile string) (*ConsumerConfig, error) {
 
 	message := c_interface.FluvioErrorMsg(errPtr)
 	if message != nil {
-		return nil, fluvio_error.NewFluvioError((c_interface.GoString(message)))
+		return nil, fluvio.NewFluvioError((c_interface.GoString(message)))
 	}
 	return &ConsumerConfig{Wrapper: config}, nil
 }
 
-func(c *ConsumerConfig) Close() {
+func (c *ConsumerConfig) Close() {
 	c_interface.ConsumerConfigFree(c.Wrapper)
 }

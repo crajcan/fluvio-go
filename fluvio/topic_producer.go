@@ -1,15 +1,14 @@
-package topic_producer
+package fluvio
 
 /*
-#cgo LDFLAGS: -L../../src -lfluvio_go
-#include "../../src/fluvio_go.h"
+#cgo LDFLAGS: -L../src -lfluvio_go
+#include "../src/fluvio_go.h"
 */
 import "C"
 import (
 	"unsafe"
 
 	"github.com/avinassh/fluvio-go/fluvio/c_interface"
-	"github.com/avinassh/fluvio-go/fluvio/fluvio_error"
 )
 
 type TopicProducer struct {
@@ -35,7 +34,7 @@ func (t *TopicProducer) Send(key, value []byte) error {
 	}
 
 	// return message
-	return fluvio_error.NewFluvioError(c_interface.GoString(message))
+	return NewFluvioError(c_interface.GoString(message))
 }
 
 func (t *TopicProducer) SendString(key, value string) error {
@@ -45,5 +44,3 @@ func (t *TopicProducer) SendString(key, value string) error {
 func (t *TopicProducer) Close() {
 	c_interface.TopicProducerFree(t.Wrapper)
 }
-
-

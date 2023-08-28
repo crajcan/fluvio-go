@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
+	"github.com/avinassh/fluvio-go/fluvio"
 	"github.com/avinassh/fluvio-go/fluvio/fluvio_client"
-	"github.com/avinassh/fluvio-go/fluvio/offset"
 )
 
 func main() {
@@ -43,7 +43,7 @@ func main() {
 	defer partitionConsumer.Close()
 
 	// create a stream object
-	stream, err := partitionConsumer.Stream(offset.NewOffsetFromBeginning(0))
+	stream, err := partitionConsumer.Stream(fluvio.NewOffsetFromBeginning(0))
 	if err != nil {
 		fmt.Println("error while getting stream on partition consumer", err)
 		return

@@ -1,32 +1,31 @@
-package partition_consumer_stream
+package consumer
 
 import "C"
 import (
 	"unsafe"
 
+	"github.com/avinassh/fluvio-go/fluvio"
 	"github.com/avinassh/fluvio-go/fluvio/c_interface"
-	"github.com/avinassh/fluvio-go/fluvio/consumer"
-	"github.com/avinassh/fluvio-go/fluvio/fluvio_error"
 )
 
 type PartitionConsumerStream struct {
 	Wrapper *c_interface.PartitionConsumerStream
 }
 
-func (pcs *PartitionConsumerStream) Next() (*consumer.Record, error) {
+func (pcs *PartitionConsumerStream) Next() (*Record, error) {
 	errPtr := c_interface.FluvioErrorNew()
 	defer c_interface.FluvioErrorFree(errPtr)
 	result := c_interface.PartitionConsumerStreamNext(pcs.Wrapper, errPtr)
 	message := c_interface.FluvioErrorMsg(errPtr)
 	if message != nil {
-		return nil, fluvio_error.NewFluvioError(c_interface.GoString(message))
+		return nil, fluvio.NewFluvioError(c_interface.GoString(message))
 	}
 	if result == nil {
-		return nil, fluvio_error.ErrNoRecord
+		return nil, fluvio.ErrNoRecord
 	}
 	defer c_interface.RecordFree(result)
 
-	record := &consumer.Record{
+	record := &Record{
 		Offset: int64(c_interface.RecordOffset(result)),
 		Value:  C.GoBytes(unsafe.Pointer(c_interface.RecordValue(result)), C.int(c_interface.RecordValueLen(result))),
 	}
